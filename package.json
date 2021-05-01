@@ -1,0 +1,16 @@
+{
+  "name": "pettine",
+  "version": "1.0.0",
+  "description": "Tutti i nodi vengono al pettine",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "raf",
+  "license": "ISC",
+  "dependencies": {
+    "easy-soap-request": "^4.1.3",
+    "fast-xml-parser": "^3.19.0",
+    "postgres": "^1.0.2"
+  }
+}
