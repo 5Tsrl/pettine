@@ -13,6 +13,7 @@ const codiciIstatRegioni = [
         //                     TOT 15668
 ]
 
+
 const url = 'http://serviziweb.csi.it/tpldatawsApplTpldatawsWs/TpldatawsSrvEPdefaultService'
 const sampleHeaders = {
   'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36',
@@ -24,9 +25,14 @@ const sampleHeaders = {
 
 
 const main = async () => {
+  console.log('inizio', (new Date()).toLocaleTimeString())
 
   // DB
-  const sql = postgres('postgres://postgres:admin5t@storm:5434/pettine', {})
+  const sql = postgres('postgres://postgres:admin5t@storm:5434/pettine', {
+    host        : process.env.DB_HOST || 'postgres',  // nome del servizio nello stack swarm   Options in the object will override any present in the url.
+    port        : process.env.DB_PORT || '5432',      // Porta interna
+    // debug       : console.log,
+  })
 
   await sql`truncate table nodi`
   await sql`truncate table fermate`
@@ -37,6 +43,7 @@ const main = async () => {
   }
 
   await sql.end()
+  console.log('fine', (new Date()).toLocaleTimeString())
 }
 
 
@@ -84,12 +91,18 @@ const insertRegione = async (codIstatRegione, sql) => {
 
 }
 
-
+// POINT(${nodo.nodoCoordLon} ${nodo.nodoCoordLat})
+// ST_GeomFromText('POINT(-126.4 45.32)', 4326)
 const insertNodo = async (nodo, sql) => {
+
   // console.log('nodo', nodo)
+  // const geomValue = `ST_GeomFromText('POINT(${nodo.nodoCoordLon} ${nodo.nodoCoordLat})', 4326)`
+  // const geomValue = `ST_GeomFromText('POINT(-126.4 45.32)', 4326)`
+  // console.log('geomValue', geomValue)
+  // vedi https://github.com/porsager/postgres/issues/12
   const [new_nodo] = await sql`
     insert into nodi (
-      "codNodo", denominazione, "tipoNodo", "codIstatComune", "denominazioneComune", "codIstatProvincia", "siglaProvincia", lat, lng
+      "codNodo", denominazione, "tipoNodo", "codIstatComune", "denominazioneComune", "codIstatProvincia", "siglaProvincia", lat, lng, geom
       ) values (
         ${nodo.codOmnibus},
         ${nodo.denominazioneNodo},
@@ -99,7 +112,8 @@ const insertNodo = async (nodo, sql) => {
         ${nodo.codIstatProvincia},
         ${nodo.siglaProvincia},
         ${nodo.nodoCoordLat},
-        ${nodo.nodoCoordLon}
+        ${nodo.nodoCoordLon},
+        ST_GeomFromText('POINT(${ sql(nodo.nodoCoordLon) } ${ sql(nodo.nodoCoordLat) })', 4326)
       )
       returning *
     `
@@ -117,13 +131,14 @@ const insertFermata = async (fermata, codNodo, sql) => {
   // console.log('fermata', fermata)
   const [new_fermata] = await sql`
     insert into fermate (
-      "codFermata", "desc", "codNodo", lat, lng
+      "codFermata", "desc", "codNodo", lat, lng, geom
       ) values (
         ${fermata.codFermataMdReg},
         ${fermata.descFermataMd},
         ${codNodo},
         ${fermata.fermataMdCoordLat},
-        ${fermata.fermataMdCoordLon}
+        ${fermata.fermataMdCoordLon},
+        ST_GeomFromText('POINT(${ sql(fermata.fermataMdCoordLon) } ${ sql(fermata.fermataMdCoordLat) })', 4326)
       )
       returning *
     `
@@ -140,7 +155,7 @@ const insertPalina = async (palina, codFermata, sql) => {
   // console.log('palina', palina)
   const [new_palina] = await sql`
     insert into paline (
-      "idPalina", "desc", "azienda", "codCsrAzienda", "codFermata",  lat, lng
+      "idPalina", "desc", "azienda", "codCsrAzienda", "codFermata",  lat, lng, geom
       ) values (
         ${palina.idPalina},
         ${palina.descPalina},
@@ -148,7 +163,8 @@ const insertPalina = async (palina, codFermata, sql) => {
         ${palina.codCsrAzienda},
         ${codFermata},
         ${palina.palinaCoordLat},
-        ${palina.palinaCoordLon}
+        ${palina.palinaCoordLon},
+        ST_GeomFromText('POINT(${ sql(palina.palinaCoordLon) } ${ sql(palina.palinaCoordLat) })', 4326)
       )
       returning *
     `
@@ -157,3 +173,6 @@ const insertPalina = async (palina, codFermata, sql) => {
 }
 
 main()
+
+// test
+// DB_HOST=storm DB_PORT=5434 node index.js
