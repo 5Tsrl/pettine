@@ -3,14 +3,15 @@ const parser = require('fast-xml-parser')
 const postgres = require('postgres')
 
 const codiciIstatRegioni = [
-  // '01', // PIEMONTE                15127 nodi
+  '01', // PIEMONTE                15127 nodi
   '02', // VALLE D’AOSTA               2 nodi
   '03', // LOMBARDIA                 458 nodi
   '05', // VENETO                      0 nodi
   '07', // LIGURIA                    62 nodi
   '08', // EMILIA ROMAGNA             19 nodi
   '09', // TOSCANA                     0 nodi
-        //                     TOT 15668
+  '999',// ESTERO                     22 nodi
+        //                     TOT 15680
 ]
 
 
@@ -50,13 +51,17 @@ const main = async () => {
 
 const insertRegione = async (codIstatRegione, sql) => {
 
+  const codIstatTag = codIstatRegione === '999'
+                  ? `<codIstatProvincia>999</codIstatProvincia>`
+                  : `<codIstatRegione>${codIstatRegione}</codIstatRegione>`
+
   const envelope = `
   <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tpl="http://tpldataws.interfacews.tpldataws.infotpl.csi.it/">
      <soapenv:Header/>
      <soapenv:Body>
         <tpl:getNodiGomma>
            <filtroRicerca>
-              <codIstatRegione>${codIstatRegione}</codIstatRegione>
+              ${codIstatTag}
            </filtroRicerca>
         </tpl:getNodiGomma>
      </soapenv:Body>
@@ -102,8 +107,9 @@ const insertNodo = async (nodo, sql) => {
   // vedi https://github.com/porsager/postgres/issues/12
   const [new_nodo] = await sql`
     insert into nodi (
-      "codNodo", denominazione, "tipoNodo", "codIstatComune", "denominazioneComune", "codIstatProvincia", "siglaProvincia", lat, lng, geom
+      "idNodo", "codNodo", denominazione, "tipoNodo", "codIstatComune", "denominazioneComune", "codIstatProvincia", "siglaProvincia", lat, lng, geom
       ) values (
+        ${nodo.idNodo},
         ${nodo.codOmnibus},
         ${nodo.denominazioneNodo},
         ${nodo.descTipoNodo},
@@ -118,7 +124,9 @@ const insertNodo = async (nodo, sql) => {
       returning *
     `
     // console.log('new_nodo', new_nodo)
-    const fermate = Array.isArray(nodo.fermate) ? nodo.fermate : [nodo.fermate]
+    const fermate = nodo.fermate ? 
+                      Array.isArray(nodo.fermate) ? nodo.fermate : [nodo.fermate]
+                    : []  
     for(const fermata of fermate) {
       await insertFermata(fermata, nodo.codOmnibus, sql)
     }
@@ -129,21 +137,26 @@ const insertNodo = async (nodo, sql) => {
 const insertFermata = async (fermata, codNodo, sql) => {
   if(!fermata) return
   // console.log('fermata', fermata)
+  
   const [new_fermata] = await sql`
-    insert into fermate (
-      "codFermata", "desc", "codNodo", lat, lng, geom
-      ) values (
-        ${fermata.codFermataMdReg},
-        ${fermata.descFermataMd},
-        ${codNodo},
-        ${fermata.fermataMdCoordLat},
-        ${fermata.fermataMdCoordLon},
-        ST_GeomFromText('POINT(${ sql(fermata.fermataMdCoordLon) } ${ sql(fermata.fermataMdCoordLat) })', 4326)
+  insert into fermate (
+    "idFermata", "codFermata", "desc", "codNodo", lat, lng, geom
+    ) values (
+      ${fermata.idFermataMd},
+      ${fermata.codFermataMdReg},
+      ${fermata.descFermataMd},
+      ${codNodo},
+      ${fermata.fermataMdCoordLat},
+      ${fermata.fermataMdCoordLon},
+      ST_GeomFromText('POINT(${ sql(fermata.fermataMdCoordLon) } ${ sql(fermata.fermataMdCoordLat) })', 4326)
       )
       returning *
-    `
-    // console.log('new_fermata', new_fermata)
-    const paline = Array.isArray(fermata.paline) ? fermata.paline : [fermata.paline]
+      `
+      // console.log('new_fermata', new_fermata)
+      const paline = fermata.paline ? 
+                        Array.isArray(fermata.paline) ? fermata.paline : [fermata.paline]
+                      : []  
+      
     for(const palina of paline) {
       await insertPalina(palina, fermata.codFermataMdReg, sql)
     }
@@ -151,8 +164,10 @@ const insertFermata = async (fermata, codNodo, sql) => {
 
 
 const insertPalina = async (palina, codFermata, sql) => {
-  if(!palina) return
-  // console.log('palina', palina)
+  if(!palina || !palina.palinaCoordLat ||  !palina.palinaCoordLon){
+    console.log(`in fermata ${codFermata}, skippo palina anomala`, palina)
+    return
+  }
   const [new_palina] = await sql`
     insert into paline (
       "idPalina", "desc", "azienda", "codCsrAzienda", "codFermata",  lat, lng, geom

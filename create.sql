@@ -2,8 +2,9 @@
 DROP TABLE public.nodi;
 CREATE TABLE public.nodi
 (
+    "idNodo" bigint NOT NULL,
     "codNodo" character varying COLLATE pg_catalog."default" NOT NULL,
-    denominazione character varying COLLATE pg_catalog."default",
+    "denominazione" character varying COLLATE pg_catalog."default",
     "tipoNodo" character varying COLLATE pg_catalog."default",
     "codIstatComune" character varying COLLATE pg_catalog."default",
     "denominazioneComune" character varying COLLATE pg_catalog."default",
@@ -13,7 +14,7 @@ CREATE TABLE public.nodi
     lng numeric(7,5),
     geom geometry(POINT, 4326),
     -- geog geography(point,4326),
-    CONSTRAINT nodi_pkey PRIMARY KEY ("codNodo")
+    CONSTRAINT nodi_pkey PRIMARY KEY ("idNodo")
 );
 
 
@@ -21,7 +22,8 @@ CREATE TABLE public.nodi
 
 DROP TABLE public.fermate;
 CREATE TABLE public.fermate
-(
+(   
+    "idFermata" bigint NOT NULL,
     "codFermata" bigint NOT NULL,
     "desc" character varying COLLATE pg_catalog."default",
     "codNodo" character varying COLLATE pg_catalog."default",
@@ -29,7 +31,7 @@ CREATE TABLE public.fermate
     lng numeric(7,5),
     geom geometry(POINT, 4326),
     -- geog geography(point,4326),
-    CONSTRAINT fermate_pkey PRIMARY KEY ("codFermata")
+    CONSTRAINT fermate_pkey PRIMARY KEY ("idFermata")
 );
 
 
