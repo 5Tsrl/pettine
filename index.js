@@ -35,9 +35,10 @@ const main = async () => {
     // debug       : console.log,
   })
 
-  await sql`truncate table nodi`
-  await sql`truncate table fermate`
-  await sql`truncate table paline`
+  // no più necessario con l'introduzione dell'upsert.  funzionerà??
+  // await sql`truncate table nodi`
+  // await sql`truncate table fermate`
+  // await sql`truncate table paline`
 
   for (const codReg of codiciIstatRegioni){
     await insertRegione(codReg, sql)
@@ -121,6 +122,20 @@ const insertNodo = async (nodo, sql) => {
         ${nodo.nodoCoordLon},
         ST_GeomFromText('POINT(${ sql(nodo.nodoCoordLon) } ${ sql(nodo.nodoCoordLat) })', 4326)
       )
+      on conflict ("codNodo")
+      do update set
+        "idNodo" = EXCLUDED."idNodo",
+        "denominazione" = EXCLUDED."denominazione",
+        "lat" = EXCLUDED.lat,
+        "lng" = EXCLUDED.lng,
+        "geom" = ST_GeomFromText('POINT(${ sql(nodo.nodoCoordLon) } ${ sql(nodo.nodoCoordLat) })', 4326)
+
+      WHERE
+      nodi."idNodo" != EXCLUDED."idNodo" OR
+      nodi."denominazione" != EXCLUDED.denominazione OR
+      nodi."lat" != EXCLUDED.lat OR
+      nodi."lng" != EXCLUDED.lng
+
       returning *
     `
     // console.log('new_nodo', new_nodo)
@@ -150,6 +165,21 @@ const insertFermata = async (fermata, codNodo, sql) => {
       ${fermata.fermataMdCoordLon},
       ST_GeomFromText('POINT(${ sql(fermata.fermataMdCoordLon) } ${ sql(fermata.fermataMdCoordLat) })', 4326)
       )
+      on conflict ("codFermata") do update set
+        "idFermata" = EXCLUDED."idFermata",
+        "desc" = EXCLUDED."desc",
+        "codNodo" = EXCLUDED."codNodo",
+        lat = EXCLUDED.lat,
+        lng = EXCLUDED.lng,
+        geom = ST_GeomFromText('POINT(${ sql(fermata.fermataMdCoordLon) } ${ sql(fermata.fermataMdCoordLat) })', 4326)
+ 
+        WHERE
+        fermate."idFermata" != EXCLUDED."idFermata" OR
+        fermate."desc" != EXCLUDED.desc OR
+        fermate."codNodo" != EXCLUDED."codNodo" OR
+        fermate."lat" != EXCLUDED.lat OR
+        fermate."lng" != EXCLUDED.lng
+         
       returning *
       `
       // console.log('new_fermata', new_fermata)
@@ -181,6 +211,23 @@ const insertPalina = async (palina, codFermata, sql) => {
         ${palina.palinaCoordLon},
         ST_GeomFromText('POINT(${ sql(palina.palinaCoordLon) } ${ sql(palina.palinaCoordLat) })', 4326)
       )
+      on conflict ("idPalina") do update set
+      "desc" = EXCLUDED."desc",
+      "azienda" = EXCLUDED."azienda",
+      "codCsrAzienda" = EXCLUDED."codCsrAzienda",
+      "codFermata" = EXCLUDED."codFermata",
+      lat = EXCLUDED.lat,
+      lng = EXCLUDED.lng,
+      geom = ST_GeomFromText('POINT(${ sql(palina.palinaCoordLon) } ${ sql(palina.palinaCoordLat) })', 4326)
+
+      WHERE
+      paline."desc" != EXCLUDED."desc" OR
+      paline."azienda" != EXCLUDED."azienda" OR
+      paline."codCsrAzienda" != EXCLUDED."codCsrAzienda" OR
+      paline."codFermata" != EXCLUDED."codFermata" OR
+      paline."lat" != EXCLUDED.lat OR
+      paline."lng" != EXCLUDED.lng
+       
       returning *
     `
     // console.log('new_palina', new_palina)
