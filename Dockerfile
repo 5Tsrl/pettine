@@ -10,4 +10,4 @@ RUN npm install
 
 CMD node index.js
 
-# docker build -t registry:5000/pettine-import . ;      docker push  registry:5000/pettine-import
+# docker build -t registry:5000/pettine-import:latest . ;      docker push  registry:5000/pettine-import:latest

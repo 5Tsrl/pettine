@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Pettine</title>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+
+  <!-- <script src="https://unpkg.com/leaflet.vectorgrid@latest/dist/Leaflet.VectorGrid.bundled.js"></script> -->
+  <script src="https://unpkg.com/leaflet.vectorgrid@latest/dist/Leaflet.VectorGrid.js"></script>
+
+
+</head>
+<body>
+
+<div id="mapid" style="width: 1600px; height: 1026px;"></div>
+<script>
+
+  const mbAttr = `Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, © <a href="http://mapbox.com">Mapbox</a>`
+
+  const options512  = {
+      tileSize: 512,
+      // maxZoom: 21,
+      zoomOffset: -1,
+      attribution: mbAttr,
+      // accessToken: 'pk.eyJ1IjoiZ3VhbHRpZXJvbWFyYXNjYSIsImEiOiJjaWt5N3JyOHEwMDR6d3ptNW8zeWo4Zmt1In0.G0VevJzeVSd59c9BAy6zdA' // info@bunet
+    }
+
+  const streets = L.tileLayer('https://{s}map.5t.torino.it/streets/{z}/{x}/{y}', options512);
+
+	const map = L.map('mapid', {
+    center: [45.05, 7.67],
+    zoom: 14,
+    layers: [streets]
+  })
+
+
+  const onClick = (e) => {    
+    L.popup()
+    // .setContent(e.layer.properties.name)
+    // .setContent(JSON.stringify(e.layer.properties))
+    .setContent(`<b>${e.layer.properties.codNodo}</b><br > ${e.layer.properties.denominazione}` )
+    .setLatLng(e.latlng)
+    .openOn(map)
+  }
+
+  L.vectorGrid
+  // .protobuf('http://storm:3030/public.nodi,public.fermate,public.paline/{z}/{x}/{y}.pbf', {
+  // .protobuf('http://storm:3030/public.nodi,public.fermate,public.fermatecsr/{z}/{x}/{y}.pbf', {
+    // .protobuf('http://storm:3030/public.nodi/{z}/{x}/{y}.pbf', {
+    .protobuf('http://storm:3030/public.fermate/{z}/{x}/{y}.pbf', {
+  // .protobuf('http://storm:3030/public.paline/{z}/{x}/{y}.pbf', {
+    interactive: true,
+    vectorTileLayerStyles: {
+      'public.nodi': {
+        // icon: new L.Icon.Default(), // bi funge, cerca /marker-icon.png
+        color: 'blue',
+        fillColor: 'blue',
+        weight: 2,
+        radius: 12,
+        fill: true,
+        fillOpacity: 0.05,
+      },
+      'public.fermate': {
+        color: 'blue',
+        weight: 2,
+        fill: true,
+        fillColor: 'blue',
+        radius: 5,
+        fillOpacity: 1,
+      },
+      'public.paline': {
+        color: '#00ffff',
+        fill: true,
+        fillColor: '#00ffff',
+        radius: 2,
+        fillOpacity: 1,
+      },
+      'public.fermatecsr': {
+        color: '#ff0000',
+        fill: true,
+        fillColor: '#ff0000',
+        radius: 2,
+        fillOpacity: 1,
+      },
+    },
+  })
+  .on('click', onClick )
+  // .on('mouseover', onClick )
+  .addTo(map);
+
+
+
+</script>
+</body>
+</html>
