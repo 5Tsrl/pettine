@@ -1,6 +1,6 @@
 
-DROP TABLE public.nodi;
-CREATE TABLE public.nodi
+DROP TABLE IF EXISTS aaaa_pettine.nodi;
+CREATE TABLE aaaa_pettine.nodi
 (
     "idNodo" bigint PRIMARY KEY,
     "codNodo" character varying UNIQUE,
@@ -13,16 +13,16 @@ CREATE TABLE public.nodi
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     lat double precision,
-    lng double precision,
-    geom geometry(POINT, 4326)
+    lng double precision
+    -- ,geom geometry(POINT, 4326)
 );
 
 
 
 
-DROP TABLE public.fermate;
-CREATE TABLE public.fermate
-(   
+DROP TABLE IF EXISTS aaaa_pettine.fermate;
+CREATE TABLE aaaa_pettine.fermate
+(
     "idFermata" bigint PRIMARY KEY,
     "codFermata" bigint  UNIQUE,
     "desc" character varying ,
@@ -30,14 +30,14 @@ CREATE TABLE public.fermate
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     lat double precision,
-    lng double precision,
-    geom geometry(POINT, 4326)
+    lng double precision
+    -- ,geom geometry(POINT, 4326)
 );
 
 
 
-DROP TABLE public.paline;
-CREATE TABLE public.paline
+DROP TABLE IF EXISTS aaaa_pettine.paline;
+CREATE TABLE aaaa_pettine.paline
 (
     "idPalina" bigint PRIMARY KEY,
     "desc" character varying ,
@@ -47,13 +47,13 @@ CREATE TABLE public.paline
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     lat double precision,
-    lng double precision,
-    geom geometry(POINT, 4326)
+    lng double precision
+    -- ,geom geometry(POINT, 4326)
 );
 
 
 -- https://x-team.com/blog/automatic-timestamps-with-postgresql/
-CREATE OR REPLACE FUNCTION trigger_set_timestamp()
+CREATE OR REPLACE FUNCTION aaaa_pettine.trigger_set_timestamp()
 RETURNS TRIGGER AS $$
 BEGIN
   NEW.updated_at = NOW();
@@ -63,18 +63,18 @@ $$ LANGUAGE plpgsql;
 
 
 CREATE TRIGGER set_timestamp
-BEFORE UPDATE ON nodi
+BEFORE UPDATE ON aaaa_pettine.nodi
 FOR EACH ROW
-EXECUTE PROCEDURE trigger_set_timestamp();
+EXECUTE PROCEDURE aaaa_pettine.trigger_set_timestamp();
 
 
 CREATE TRIGGER set_timestamp
-BEFORE UPDATE ON fermate
+BEFORE UPDATE ON aaaa_pettine.fermate
 FOR EACH ROW
-EXECUTE PROCEDURE trigger_set_timestamp();
+EXECUTE PROCEDURE aaaa_pettine.trigger_set_timestamp();
 
 
 CREATE TRIGGER set_timestamp
-BEFORE UPDATE ON paline
+BEFORE UPDATE ON aaaa_pettine.paline
 FOR EACH ROW
-EXECUTE PROCEDURE trigger_set_timestamp();
+EXECUTE PROCEDURE aaaa_pettine.trigger_set_timestamp();

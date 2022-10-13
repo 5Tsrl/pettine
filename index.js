@@ -1,6 +1,7 @@
 const soapRequest = require('easy-soap-request')
 const parser = require('fast-xml-parser')
 const postgres = require('postgres')
+require('dotenv').config()
 
 const codiciIstatRegioni = [
   '01', // PIEMONTE                15127 nodi
@@ -25,27 +26,39 @@ const sampleHeaders = {
 }
 
 
-const main = async () => {
-  console.log('inizio', (new Date()).toLocaleTimeString())
+exports.pettina = async () => {
 
-  // DB
-  const sql = postgres('postgres://postgres:admin5t@storm:5434/pettine', {
-    host        : process.env.DB_HOST || 'postgres',  // nome del servizio nello stack swarm   Options in the object will override any present in the url.
-    port        : process.env.DB_PORT || '5432',      // Porta interna
+  console.log('INIZIO', (new Date()).toLocaleTimeString())
+
+  // POSTGRES PETTINE
+  const sql = postgres('postgres://username:password@host:port/database', {
+    host        : process.env.PG_DB_HOST,
+    port        : process.env.PG_DB_PORT,
+    username    : process.env.PG_DB_USER,
+    password    : process.env.PG_DB_PASSWORD,
+    database    : 'gtfs',
     // debug       : console.log,
   })
 
-  // no più necessario con l'introduzione dell'upsert.  funzionerà??
+  // no più necessario con l'introduzione dell'upsert.
   // await sql`truncate table nodi`
   // await sql`truncate table fermate`
   // await sql`truncate table paline`
 
-  for (const codReg of codiciIstatRegioni){
-    await insertRegione(codReg, sql)
+  try{
+    for (const codReg of codiciIstatRegioni){
+      await insertRegione(codReg, sql)
+    }
+  } catch(err){
+    console.log('erroraccio!!', err)
+  } finally{
+    // tiro giù la connessione
+    await sql.end({ timeout: 1 })
   }
 
-  await sql.end()
-  console.log('fine', (new Date()).toLocaleTimeString())
+
+  console.log('FINE', (new Date()).toLocaleTimeString())
+  return 'ok'
 }
 
 
@@ -81,6 +94,7 @@ const insertRegione = async (codIstatRegione, sql) => {
 
   const parserOptions = {
     ignoreNameSpace : true, // default is false,
+    parseTrueNumberOnly: true,
   }
   const jsonObj = parser.parse(soapBody, parserOptions)
   const {result} = jsonObj.Body.getNodiGommaResponse
@@ -92,6 +106,7 @@ const insertRegione = async (codIstatRegione, sql) => {
 
 
   for (const nodo of nodi) {
+    // console.log(nodo.codOmnibus)
     await insertNodo(nodo, sql)
   }
 
@@ -107,8 +122,8 @@ const insertNodo = async (nodo, sql) => {
   // console.log('geomValue', geomValue)
   // vedi https://github.com/porsager/postgres/issues/12
   const [new_nodo] = await sql`
-    insert into nodi (
-      "idNodo", "codNodo", denominazione, "tipoNodo", "codIstatComune", "denominazioneComune", "codIstatProvincia", "siglaProvincia", lat, lng, geom
+    insert into aaaa_pettine.nodi (
+      "idNodo", "codNodo", denominazione, "tipoNodo", "codIstatComune", "denominazioneComune", "codIstatProvincia", "siglaProvincia", lat, lng --, geom
       ) values (
         ${nodo.idNodo},
         ${nodo.codOmnibus},
@@ -119,16 +134,16 @@ const insertNodo = async (nodo, sql) => {
         ${nodo.codIstatProvincia},
         ${nodo.siglaProvincia},
         ${nodo.nodoCoordLat},
-        ${nodo.nodoCoordLon},
-        ST_GeomFromText('POINT(${ sql(nodo.nodoCoordLon) } ${ sql(nodo.nodoCoordLat) })', 4326)
+        ${nodo.nodoCoordLon}
+        -- ,ST_GeomFromText('POINT(${ sql(nodo.nodoCoordLon) } ${ sql(nodo.nodoCoordLat) })', 4326)
       )
       on conflict ("codNodo")
       do update set
         "idNodo" = EXCLUDED."idNodo",
         "denominazione" = EXCLUDED."denominazione",
         "lat" = EXCLUDED.lat,
-        "lng" = EXCLUDED.lng,
-        "geom" = ST_GeomFromText('POINT(${ sql(nodo.nodoCoordLon) } ${ sql(nodo.nodoCoordLat) })', 4326)
+        "lng" = EXCLUDED.lng
+        --, "geom" = ST_GeomFromText('POINT(${ sql(nodo.nodoCoordLon) } ${ sql(nodo.nodoCoordLat) })', 4326)
 
       WHERE
       nodi."idNodo" != EXCLUDED."idNodo" OR
@@ -139,9 +154,9 @@ const insertNodo = async (nodo, sql) => {
       returning *
     `
     // console.log('new_nodo', new_nodo)
-    const fermate = nodo.fermate ? 
+    const fermate = nodo.fermate ?
                       Array.isArray(nodo.fermate) ? nodo.fermate : [nodo.fermate]
-                    : []  
+                    : []
     for(const fermata of fermate) {
       await insertFermata(fermata, nodo.codOmnibus, sql)
     }
@@ -152,41 +167,41 @@ const insertNodo = async (nodo, sql) => {
 const insertFermata = async (fermata, codNodo, sql) => {
   if(!fermata) return
   // console.log('fermata', fermata)
-  
+
   const [new_fermata] = await sql`
-  insert into fermate (
-    "idFermata", "codFermata", "desc", "codNodo", lat, lng, geom
+  insert into aaaa_pettine.fermate (
+    "idFermata", "codFermata", "desc", "codNodo", lat, lng-- , geom
     ) values (
       ${fermata.idFermataMd},
       ${fermata.codFermataMdReg},
       ${fermata.descFermataMd},
       ${codNodo},
       ${fermata.fermataMdCoordLat},
-      ${fermata.fermataMdCoordLon},
-      ST_GeomFromText('POINT(${ sql(fermata.fermataMdCoordLon) } ${ sql(fermata.fermataMdCoordLat) })', 4326)
+      ${fermata.fermataMdCoordLon}
+      -- ,ST_GeomFromText('POINT(${ sql(fermata.fermataMdCoordLon) } ${ sql(fermata.fermataMdCoordLat) })', 4326)
       )
       on conflict ("codFermata") do update set
         "idFermata" = EXCLUDED."idFermata",
         "desc" = EXCLUDED."desc",
         "codNodo" = EXCLUDED."codNodo",
         lat = EXCLUDED.lat,
-        lng = EXCLUDED.lng,
-        geom = ST_GeomFromText('POINT(${ sql(fermata.fermataMdCoordLon) } ${ sql(fermata.fermataMdCoordLat) })', 4326)
- 
+        lng = EXCLUDED.lng
+        -- ,geom = ST_GeomFromText('POINT(${ sql(fermata.fermataMdCoordLon) } ${ sql(fermata.fermataMdCoordLat) })', 4326)
+
         WHERE
         fermate."idFermata" != EXCLUDED."idFermata" OR
         fermate."desc" != EXCLUDED.desc OR
         fermate."codNodo" != EXCLUDED."codNodo" OR
         fermate."lat" != EXCLUDED.lat OR
         fermate."lng" != EXCLUDED.lng
-         
+
       returning *
       `
       // console.log('new_fermata', new_fermata)
-      const paline = fermata.paline ? 
+      const paline = fermata.paline ?
                         Array.isArray(fermata.paline) ? fermata.paline : [fermata.paline]
-                      : []  
-      
+                      : []
+
     for(const palina of paline) {
       await insertPalina(palina, fermata.codFermataMdReg, sql)
     }
@@ -198,43 +213,47 @@ const insertPalina = async (palina, codFermata, sql) => {
     console.log(`in fermata ${codFermata}, skippo palina anomala`, palina)
     return
   }
-  const [new_palina] = await sql`
-    insert into paline (
-      "idPalina", "desc", "azienda", "codCsrAzienda", "codFermata",  lat, lng, geom
-      ) values (
-        ${palina.idPalina},
-        ${palina.descPalina},
-        ${palina.denominazioneAzienda},
-        ${palina.codCsrAzienda},
-        ${codFermata},
-        ${palina.palinaCoordLat},
-        ${palina.palinaCoordLon},
-        ST_GeomFromText('POINT(${ sql(palina.palinaCoordLon) } ${ sql(palina.palinaCoordLat) })', 4326)
-      )
-      on conflict ("idPalina") do update set
-      "desc" = EXCLUDED."desc",
-      "azienda" = EXCLUDED."azienda",
-      "codCsrAzienda" = EXCLUDED."codCsrAzienda",
-      "codFermata" = EXCLUDED."codFermata",
-      lat = EXCLUDED.lat,
-      lng = EXCLUDED.lng,
-      geom = ST_GeomFromText('POINT(${ sql(palina.palinaCoordLon) } ${ sql(palina.palinaCoordLat) })', 4326)
+  try{
+    const [new_palina] = await sql`
+      insert into aaaa_pettine.paline (
+        "idPalina", "desc", "azienda", "codCsrAzienda", "codFermata",  lat, lng-- , geom
+        ) values (
+          ${palina.idPalina},
+          ${palina.descPalina},
+          ${palina.denominazioneAzienda},
+          ${palina.codCsrAzienda},
+          ${codFermata},
+          ${palina.palinaCoordLat},
+          ${palina.palinaCoordLon}
+          --, ST_GeomFromText('POINT(${ sql(palina.palinaCoordLon) } ${ sql(palina.palinaCoordLat) })', 4326)
+        )
+        on conflict ("idPalina") do update set
+        "desc" = EXCLUDED."desc",
+        "azienda" = EXCLUDED."azienda",
+        "codCsrAzienda" = EXCLUDED."codCsrAzienda",
+        "codFermata" = EXCLUDED."codFermata",
+        lat = EXCLUDED.lat,
+        lng = EXCLUDED.lng
+        -- ,geom = ST_GeomFromText('POINT(${ sql(palina.palinaCoordLon) } ${ sql(palina.palinaCoordLat) })', 4326)
 
-      WHERE
-      paline."desc" != EXCLUDED."desc" OR
-      paline."azienda" != EXCLUDED."azienda" OR
-      paline."codCsrAzienda" != EXCLUDED."codCsrAzienda" OR
-      paline."codFermata" != EXCLUDED."codFermata" OR
-      paline."lat" != EXCLUDED.lat OR
-      paline."lng" != EXCLUDED.lng
-       
-      returning *
-    `
-    // console.log('new_palina', new_palina)
+        WHERE
+        paline."desc" != EXCLUDED."desc" OR
+        paline."azienda" != EXCLUDED."azienda" OR
+        paline."codCsrAzienda" != EXCLUDED."codCsrAzienda" OR
+        paline."codFermata" != EXCLUDED."codFermata" OR
+        paline."lat" != EXCLUDED.lat OR
+        paline."lng" != EXCLUDED.lng
+
+        returning *
+      `
+      // console.log('new_palina', new_palina)
+  } catch(err){
+    console.log('errore inserimento palina', err)
+  }
 
 }
 
-main()
+// exports.pettina()
 
 // test
-// DB_HOST=storm DB_PORT=5434 node index.js
+// node index.js

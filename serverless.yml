@@ -1,0 +1,51 @@
+
+# app and org for use with dashboard.serverless.com
+# org: 5torg
+# app: twitter
+
+# la lambda su aws si vedrà con nome <service>-<stage>-<function>
+service: pettine
+frameworkVersion: '2'
+
+provider:
+  name: aws
+  lambdaHashingVersion: 20201221
+  runtime: nodejs14.x
+  profile: cafe
+  stage: prod
+  region: eu-central-1
+
+
+  environment:
+    TZ: 'Europe/Rome'
+
+  tags:
+    progetto: 'cafe'
+
+
+functions:
+
+  aggiorna:
+    handler: handler.aggiorna
+    timeout: 600
+    vpc:
+      securityGroupIds:
+        - sg-017707b7e63899c45
+      subnetIds:
+        - subnet-0c8a9dc212353e205  #VPC-222-priv-subnet-1a
+    events:
+    - schedule:
+        name: pettine-aggiorna
+        description: 'chima pettine, aggiorna i nodi da csi su db cafe'
+        rate: cron(6 12 ? * TUE *)
+
+
+
+
+
+
+# AWS_SDK_LOAD_CONFIG=1 sls deploy
+# AWS_SDK_LOAD_CONFIG=1 sls remove
+# AWS_SDK_LOAD_CONFIG=1 sls deploy function -f aggiorna
+
+# AWS_SDK_LOAD_CONFIG=1 sls invoke local -f aggiorna
